@@ -7,6 +7,8 @@ import nltk
 from nltk.corpus import stopwords
 
 # Ensure stopwords are downloaded
+
+custom_stopwords = [""]
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
 
@@ -30,7 +32,6 @@ def get_keywords_by_location_and_type(
     Returns:
         List of (keyword, count) tuples
     """
-
     # Merge reviews with listing metadata
     merged = df_reviews.merge(
         df_listings[['id', 'neighbourhood_cleansed', 'room_type']],
