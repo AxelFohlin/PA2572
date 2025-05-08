@@ -1,5 +1,6 @@
 # review_insights.py
 
+from keybert import KeyBERT
 import pandas as pd
 import re
 from collections import Counter
@@ -192,3 +193,23 @@ room_counts_pivot = room_counts.pivot(index='neighbourhood_cleansed', columns='r
 
 # Display
 print(room_counts_pivot)
+
+
+def extract_keywords_from_positive_reviews(df_sentiment_reviews: pd.DataFrame, df_listings: pd.DataFrame, top_n=10):
+    df_positive = df_sentiment_reviews[df_sentiment_reviews["sentiment"] == "POSITIVE"]
+
+    merged = df_positive.merge(
+        df_listings[["id", "neighbourhood_cleansed", "room_type", "name", "amenities", "description"]],
+        left_on="listing_id",
+        right_on="id",
+        how="inner"
+    )
+
+    corpus = " ".join(merged['comments'].dropna().astype(str))
+
+    kw_model = KeyBERT()
+    keywords = kw_model.extract_keywords(corpus, keyphrase_ngram_range=(1,1), stop_words='english', top_n=top_n, use_maxsum=True, nr_candidates=40)
+
+    return keywords
+
+print(extract_keywords_from_positive_reviews(df_reviews, df_listings, top_n=10))

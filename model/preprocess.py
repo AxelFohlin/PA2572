@@ -1,4 +1,6 @@
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+import ast
 
 def append_sentiment_score(listings_df: pd.DataFrame, reviews_df: pd.DataFrame):
     """
@@ -20,31 +22,45 @@ def append_sentiment_score(listings_df: pd.DataFrame, reviews_df: pd.DataFrame):
     sentiment_map = dict(zip(aggregated_sentiment['listing_id'], aggregated_sentiment['sentiment_score']))
     listings_df['sentiment_score'] = listings_df['id'].map(sentiment_map)
 
-def embedd_amenity(amenities: list[str], embedding_model):
-    return embedding_model.encode(amenities)
+def tfidf_amenities(listings_df: pd.DataFrame, max_features=100):
+    # Convert stringified lists to space-separated strings
+    listings_df["amenities_clean"] = listings_df["amenities"].fillna("[]").apply(
+        lambda x: " ".join(ast.literal_eval(x))
+    )
 
-def itemize_amenities(embedding_model, listings_df: pd.DataFrame):
-    """
-    Converts the 'amenities' column of stringified lists into multi-hot encoded columns.
-    Modifies listings_df in place by appending amenity columns.
-    """
+    vectorizer = TfidfVectorizer(max_features=max_features)
+    tfidf_matrix = vectorizer.fit_transform(listings_df["amenities_clean"])
+    
+    tfidf_df = pd.DataFrame(tfidf_matrix.toarray(), columns=vectorizer.get_feature_names_out())
+    listings_df.reset_index(drop=True, inplace=True)
+    tfidf_df.reset_index(drop=True, inplace=True)
+    
+    listings_df = pd.concat([listings_df, tfidf_df], axis=1)
+    return listings_df, vectorizer
 
-    listings_df['embedded_amenities'] = listings_df['amenities'].apply(embedd_amenity, args=(embedding_model,))
-
-def load_and_preprocess(embedding_model):
+def load_and_preprocess():
     data = pd.read_csv("data/listings/listings.csv")
     important_columns = [
         'id', 'price', 'neighbourhood_cleansed', 'room_type',
         'bedrooms', 'bathrooms', 'accommodates', 'amenities',
-        'minimum_nights', 'number_of_reviews', 'review_scores_rating',
-        'name', 'description'
+        'minimum_nights', 'maximum_nights', 'number_of_reviews', 'review_scores_rating',
+        'longitude', 'latitude', 'name', 'description'
     ]
     df = data[important_columns].copy()
     df["price"] = df["price"].replace('[\$,]', '', regex=True).astype(float)
     df = df.dropna(subset=['price'])
     df = df[df['price'] != 0]
 
+    lower = df['price'].quantile(0.05)
+    upper = df['price'].quantile(0.95)
+    df = df[(df['price'] >= lower) & (df['price'] <= upper)]
+
     df_reviews = pd.read_csv("data/sentiment_reviews.csv")
     append_sentiment_score(df, df_reviews)
-    itemize_amenities(embedding_model, df)
-    return df
+
+    df, vectorizer = tfidf_amenities(df, max_features=100)
+
+    return df, vectorizer
+
+def get_amenities_suggestions():
+    pass
