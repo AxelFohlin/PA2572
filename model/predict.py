@@ -6,8 +6,6 @@ def prepare_features(vectorizer, amenities: list[str], numerical_data: list[floa
     tfidf_matrix = vectorizer.transform([amenities_str])
     numerical = np.array(numerical_data).reshape(1, -1)
 
-    print("USER NUMERICAL: ", numerical)
-
     return np.hstack((tfidf_matrix.toarray(), numerical))
 
 

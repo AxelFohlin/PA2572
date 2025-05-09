@@ -1,15 +1,14 @@
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
-def train_model(df, vectorizer):
-    tfidf_matrix = vectorizer.fit_transform(df['amenities_clean'])
-    numerical_features = df[['bedrooms', 'bathrooms', 'accommodates', 'minimum_nights', 'maximum_nights', 'longitude', 'latitude']].values
+def train_model(df_train, vectorizer):
+    tfidf_matrix = vectorizer.fit_transform(df_train['amenities'])
+    numerical_features = df_train[['bedrooms', 'bathrooms', 'accommodates', 'minimum_nights', 'maximum_nights', 'longitude', 'latitude']].values
 
-    print("NUMERICAL: ", numerical_features[9])
+    X_train = np.hstack((tfidf_matrix.toarray(), numerical_features))
+    y_train = df_train['price']
 
-    X = np.hstack((tfidf_matrix.toarray(), numerical_features))
-    y = df['price']
+    model = RandomForestRegressor(random_state=42, n_estimators=100, min_samples_split=5, min_samples_leaf=2, max_features='sqrt', bootstrap=False, max_depth=None)
+    model.fit(X_train, y_train)
 
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    model.fit(X, y)
     return model

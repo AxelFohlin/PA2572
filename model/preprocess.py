@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
 import ast
 
 def append_sentiment_score(listings_df: pd.DataFrame, reviews_df: pd.DataFrame):
@@ -24,17 +25,17 @@ def append_sentiment_score(listings_df: pd.DataFrame, reviews_df: pd.DataFrame):
 
 def tfidf_amenities(listings_df: pd.DataFrame, max_features=100):
     # Convert stringified lists to space-separated strings
-    listings_df["amenities_clean"] = listings_df["amenities"].fillna("[]").apply(
-        lambda x: " ".join(ast.literal_eval(x))
-    )
+    # listings_df["amenities_clean"] = listings_df["amenities"].fillna("[]").apply(
+    #     lambda x: " ".join(ast.literal_eval(x))
+    # )
 
-    vectorizer = TfidfVectorizer(max_features=max_features)
-    tfidf_matrix = vectorizer.fit_transform(listings_df["amenities_clean"])
+    vectorizer = TfidfVectorizer(max_features=max_features, ngram_range=(1, 3), stop_words='english')
+    tfidf_matrix = vectorizer.fit_transform(listings_df["amenities"])
     
     tfidf_df = pd.DataFrame(tfidf_matrix.toarray(), columns=vectorizer.get_feature_names_out())
     listings_df.reset_index(drop=True, inplace=True)
     tfidf_df.reset_index(drop=True, inplace=True)
-    
+
     listings_df = pd.concat([listings_df, tfidf_df], axis=1)
     return listings_df, vectorizer
 
@@ -54,13 +55,21 @@ def load_and_preprocess():
     lower = df['price'].quantile(0.05)
     upper = df['price'].quantile(0.95)
     df = df[(df['price'] >= lower) & (df['price'] <= upper)]
-
+ 
     df_reviews = pd.read_csv("data/sentiment_reviews.csv")
     append_sentiment_score(df, df_reviews)
 
-    df, vectorizer = tfidf_amenities(df, max_features=100)
+    df, vectorizer = tfidf_amenities(df, max_features=20)
 
-    return df, vectorizer
+    df_train, df_test = train_test_split(df, test_size=0.1, random_state=42)
+
+    print(df_train.shape)
+
+    df.to_csv("data/listings/df_listings.csv", index=False)
+    df_train.to_csv("data/listings/df_listings_train.csv", index=False)
+    df_test.to_csv("data/listings/df_listings_test.csv", index=False)
+
+    return df_train, df_test, vectorizer
 
 def get_amenities_suggestions():
     pass

@@ -1,9 +1,15 @@
 import streamlit as st
-from model.preprocess import load_and_preprocess
-from model.train import train_model
+import pandas as pd
+
+from setup import setup_model
 from model.predict import prepare_features, predict_price
 from streamlit_tags import st_tags
 from streamlit_geolocation import streamlit_geolocation
+from model.evaluation import display_feature_importance
+from suggestions import get_keywords_by_location_and_type
+
+df_reviews = pd.read_csv("data/sentiment_reviews.csv")
+df_listings = pd.read_csv("data/listings/listings.csv")
 
 if 'property_info' not in st.session_state:
     st.session_state['property_info'] = {
@@ -17,15 +23,7 @@ if 'property_info' not in st.session_state:
 if "amenity_list" not in st.session_state:
     st.session_state["amenity_list"] = []
 
-# Cache the model loading and training
-@st.cache_resource
-def setup():
-    # yo
-    df, vectorizer = load_and_preprocess()
-    model = train_model(df, vectorizer)
-    return model, vectorizer
-
-model, vectorizer = setup()
+model, df_test, vectorizer = setup_model()
 
 with st.sidebar:
     pass
@@ -69,4 +67,33 @@ if st.button("Predict Price"):
         'minimum_nights': minimum_nights
     }
 
+    st.divider()
+
     st.success(f"💰 Estimated Price per Night: **${price:.2f}**")
+
+    col1, col2, col3 = st.columns(3, border=True)
+
+    with col1:
+        st.write("Important Keywords")
+    with col2:
+        st.write("High-Impact Words")
+        keywords = get_keywords_by_location_and_type(
+            df_reviews=df_reviews,
+            df_listings=df_listings,
+            neighborhood="Kungsholmens",
+            room_type="Private room",
+            top_n=10
+        )
+
+        badge_string = " ".join([f":blue-badge[{kw}]" for kw, _ in keywords])
+        st.markdown(badge_string)
+    with col3:
+        st.write("Competitive Amenities")
+        feature_importance_df = display_feature_importance(model, vectorizer)
+        excluded_features = {"amenities", "bedrooms", "bathrooms", "accommodates", "minimum_nights", "longitude", "latitude", "maximum_nights"}
+
+        filtered_df = feature_importance_df[~feature_importance_df["Feature"].isin(excluded_features)]
+        filtered_df = filtered_df.sort_values(by="Importance", ascending=False)
+
+        badge_string = " ".join([f":orange-badge[{row['Feature']}]" for _, row in filtered_df.iterrows()])
+        st.markdown(badge_string)
