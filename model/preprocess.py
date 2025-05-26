@@ -1,13 +1,7 @@
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-import ast
 
 def append_sentiment_score(listings_df: pd.DataFrame, reviews_df: pd.DataFrame):
-    """
-    Add sentiment score directly to the listings_df based on reviews_df.
-    This modifies listings_df in place.
-    """
     listings_df['id'] = listings_df['id'].astype(int)
     reviews_df['listing_id'] = reviews_df['listing_id'].astype(int)
 
@@ -23,22 +17,6 @@ def append_sentiment_score(listings_df: pd.DataFrame, reviews_df: pd.DataFrame):
     sentiment_map = dict(zip(aggregated_sentiment['listing_id'], aggregated_sentiment['sentiment_score']))
     listings_df['sentiment_score'] = listings_df['id'].map(sentiment_map)
 
-def tfidf_amenities(listings_df: pd.DataFrame, max_features=100):
-    # Convert stringified lists to space-separated strings
-    # listings_df["amenities_clean"] = listings_df["amenities"].fillna("[]").apply(
-    #     lambda x: " ".join(ast.literal_eval(x))
-    # )
-
-    vectorizer = TfidfVectorizer(max_features=max_features, ngram_range=(1, 3), stop_words='english')
-    tfidf_matrix = vectorizer.fit_transform(listings_df["amenities"])
-    
-    tfidf_df = pd.DataFrame(tfidf_matrix.toarray(), columns=vectorizer.get_feature_names_out())
-    listings_df.reset_index(drop=True, inplace=True)
-    tfidf_df.reset_index(drop=True, inplace=True)
-
-    listings_df = pd.concat([listings_df, tfidf_df], axis=1)
-    return listings_df, vectorizer
-
 def load_and_preprocess():
     data = pd.read_csv("data/listings/listings.csv")
     important_columns = [
@@ -52,24 +30,20 @@ def load_and_preprocess():
     df = df.dropna(subset=['price'])
     df = df[df['price'] != 0]
 
-    lower = df['price'].quantile(0.05)
-    upper = df['price'].quantile(0.95)
-    df = df[(df['price'] >= lower) & (df['price'] <= upper)]
- 
+    upper = df['price'].quantile(0.85)
+    df = df[(df['price'] <= upper)]
+
     df_reviews = pd.read_csv("data/sentiment_reviews.csv")
     append_sentiment_score(df, df_reviews)
 
-    df, vectorizer = tfidf_amenities(df, max_features=20)
-
     df_train, df_test = train_test_split(df, test_size=0.1, random_state=42)
 
-    print(df_train.shape)
-
+    # Save CSVs (optional)
     df.to_csv("data/listings/df_listings.csv", index=False)
     df_train.to_csv("data/listings/df_listings_train.csv", index=False)
     df_test.to_csv("data/listings/df_listings_test.csv", index=False)
 
-    return df_train, df_test, vectorizer
+    return df_train, df_test
 
 def get_amenities_suggestions():
     pass

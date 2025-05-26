@@ -5,6 +5,6 @@ from model.train import train_model
 
 @st.cache_resource
 def setup_model():
-    df_train, df_test, vectorizer = load_and_preprocess()
-    model = train_model(df_train, vectorizer)
+    df_train, df_test = load_and_preprocess()
+    model, vectorizer = train_model(df_train)
     return model, df_test, vectorizer

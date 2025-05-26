@@ -18,14 +18,12 @@ def evaluate_model(model: RandomForestRegressor, df_test, vectorizer):
     mx = max(y_train.max(), y_pred.max())
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    # Scatter
     ax.scatter(y_train, y_pred, alpha=0.5, label='Listings')
 
     # Vertical error lines
     for yt, yp in zip(y_train, y_pred):
         ax.plot([yt, yt], [yt, yp], alpha=0.3, linestyle='-')
 
-    # Ideal prediction line (y = x)
     ax.plot([mn, mx], [mn, mx], linestyle='--', linewidth=2, label='Perfect')
 
     ax.set_xlabel("Actual Price")
@@ -60,6 +58,5 @@ def display_feature_importance(model, vectorizer):
     plt.title('Top 20 Most Important Features')
     plt.gca().invert_yaxis()
     plt.tight_layout()
-    plt.show()
 
     return feature_df

@@ -6,7 +6,7 @@ from model.predict import prepare_features, predict_price
 from streamlit_tags import st_tags
 from streamlit_geolocation import streamlit_geolocation
 from model.evaluation import display_feature_importance
-from suggestions import get_keywords_by_location_and_type
+from suggestions import get_keywords_count
 
 df_reviews = pd.read_csv("data/sentiment_reviews.csv")
 df_listings = pd.read_csv("data/listings/listings.csv")
@@ -38,7 +38,6 @@ amenities = st_tags(
     maxtags = -1,
     key='1')
 
-# amenities = ["Washer", "Hair dryer", "Hangers", "Indoor fireplace", "Wifi", "Exterior security cameras on property", "Iron", "Kitchen", "Free parking on premises", "Smoke alarm", "Fire extinguisher", "Dryer", "TV", "Heating", "Hot water", "Shampoo", "Cooking basics", "Patio or balcony", "Dedicated workspace", "Refrigerator", "Backyard", "Coffee maker"]
 
 location = streamlit_geolocation()
 if location:
@@ -51,7 +50,7 @@ bedrooms = st.number_input("Bedrooms", min_value=0, value=1)
 bathrooms = st.number_input("Bathrooms", min_value=0.0, value=1.0, step=0.5)
 accommodates = st.number_input("Accommodates", min_value=1, value=2)
 minimum_nights = st.number_input("Minimum Nights", min_value=1, value=2)
-maximum_nights = st.number_input("Minimum Nights", min_value=1, value=4)
+maximum_nights = st.number_input("Maximum Nights", min_value=1, value=4)
 
 if st.button("Predict Price"):
     numerical = [bedrooms, bathrooms, accommodates, minimum_nights, maximum_nights, location['longitude'], location['latitude']]
@@ -69,20 +68,45 @@ if st.button("Predict Price"):
 
     st.divider()
 
-    st.success(f"💰 Estimated Price per Night: **${price:.2f}**")
+    st.success(f"💰 Estimated Price per Night: **{price:.2f} SEK**")
 
     col1, col2, col3 = st.columns(3, border=True)
 
     with col1:
         st.write("Important Keywords")
-    with col2:
-        st.write("High-Impact Words")
-        keywords = get_keywords_by_location_and_type(
+        imp_keywords_title = get_keywords_count(
             df_reviews=df_reviews,
             df_listings=df_listings,
-            neighborhood="Kungsholmens",
-            room_type="Private room",
-            top_n=10
+            neighbourhood_cleansed="all",
+            room_type="all",
+            top_n=10,
+            text_source="name",
+        )
+        imp_keywords_description = get_keywords_count(
+            df_reviews=df_reviews,
+            df_listings=df_listings,
+            neighbourhood_cleansed="all",
+            room_type="all",
+            top_n=10,
+            text_source="description",
+        )
+
+        badge_string = " ".join([f":green-badge[{kw}]" for kw, _ in imp_keywords_title])
+        st.markdown(":gray[Title keywords]")
+        st.markdown(badge_string)
+
+        badge_string = " ".join([f":green-badge[{kw}]" for kw, _ in imp_keywords_description])
+        st.markdown(":gray[Description keywords]")
+        st.markdown(badge_string)
+    with col2:
+        st.write("High-Impact Words")
+        keywords = get_keywords_count(
+            df_reviews=df_reviews,
+            df_listings=df_listings,
+            neighbourhood_cleansed="all",
+            room_type="all",
+            top_n=10,
+            text_source="comments",
         )
 
         badge_string = " ".join([f":blue-badge[{kw}]" for kw, _ in keywords])
